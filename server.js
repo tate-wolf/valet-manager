@@ -1,7 +1,7 @@
 // server.js
 const express = require('express');
 const session = require('express-session');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
 const path = require('path');
 const db = require('./db');
