@@ -1,0 +1,36 @@
+<%- include('partials/header', { title: 'Edit Shift Report' }) %>
+<div>
+  <h2>Edit Shift Report ID <%= report.id %></h2>
+
+  <form action="/admin/edit/<%= report.id %>" method="POST">
+    <label for="shift_date">Shift Date:</label>
+    <input type="text" name="shift_date" id="shift_date" value="<%= report.shift_date %>" required>
+    <br>
+
+    <label for="hours">Hours Worked:</label>
+    <input type="number" step="0.1" name="hours" id="hours" value="<%= report.hours %>" required>
+    <br>
+
+    <label for="cars"># of Cars:</label>
+    <input type="number" name="cars" id="cars" value="<%= report.cars %>" required>
+    <br>
+
+    <label for="online_tips">Online Tips:</label>
+    <input type="number" step="0.01" name="online_tips" id="online_tips" value="<%= report.online_tips %>" required>
+    <br>
+
+    <label for="cash_tips">Cash Tips:</label>
+    <input type="number" step="0.01" name="cash_tips" id="cash_tips" value="<%= report.cash_tips %>" required>
+    <br>
+
+    <!-- If you store location by ID, you might have a dropdown. If by text, do an input. -->
+    <!-- Example if location is just text in shift_reports: 
+    <label for="location_name">Location:</label>
+    <input type="text" name="location_name" id="location_name" value="<%= report.location_name %>">
+    -->
+
+    <button type="submit" class="btn-dark">Save Changes</button>
+    <a href="/admin" class="btn-dark">Cancel</a>
+  </form>
+</div>
+<%- include('partials/footer') %>

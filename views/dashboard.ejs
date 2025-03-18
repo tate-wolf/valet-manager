@@ -1,0 +1,57 @@
+<%- include('partials/header', { title: 'Dashboard' }) %>
+<div>
+  <h2>Submit Shift Report</h2>
+  <% if (error) { %>
+    <p style="color:red;"><%= error %></p>
+  <% } %>
+  <% if (message) { %>
+    <p style="color:green;"><%= message %></p>
+  <% } %>
+  
+  <!-- Important: enctype="multipart/form-data" is required for file uploads -->
+  <form action="/dashboard" method="POST" enctype="multipart/form-data">
+    <label for="shift_date">Shift Date:</label>
+    <input type="date" id="shift_date" name="shift_date" required>
+    <br>
+
+    <label for="hours">Hours Worked:</label>
+    <input type="number" step="0.1" id="hours" name="hours" required>
+    <br>
+
+    <!-- NEW FIELD FOR # OF CARS -->
+    <label for="cars"># of Cars:</label>
+    <input type="number" id="cars" name="cars" required>
+    <br>
+
+    <label for="online_tips">Online Payments:</label>
+    <input type="number" step="0.01" id="online_tips" name="online_tips" required>
+    <br>
+
+    <label for="cash_tips">Cash Payments:</label>
+    <input type="number" step="0.01" id="cash_tips" name="cash_tips" required>
+    <br>
+
+    <label for="location_id">Location:</label>
+    <select name="location_id" id="location_id" required>
+      <option value="">--Select Location--</option>
+      <% locations.forEach(loc => { %>
+        <option value="<%= loc.id %>"><%= loc.name %></option>
+      <% }) %>
+    </select>
+    <br><br>
+
+    <!-- File input for up to 5 screenshots -->
+    <label for="screenshots">Online Payment Screenshots (up to 5):</label>
+    <input 
+      type="file"
+      name="screenshots"
+      id="screenshots"
+      accept="image/*"
+      multiple
+    >
+    <br><br>
+
+    <button type="submit" class="btn-dark">Submit Report</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

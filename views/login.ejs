@@ -1,0 +1,26 @@
+<%- include('partials/header', { title: 'Login' }) %>
+<div>
+  <link rel="stylesheet" href="public/css/style.css">
+  <h2>Login</h2>
+  <% if (error) { %>
+    <p style="color:red;"><%= error %></p>
+  <% } %>
+  <form action="/login" method="POST">
+    <div class="form-group">
+      <label for="phone">Phone:</label>
+      <input type="text" id="phone" name="phone" required>
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required>
+    </div>
+    
+    <div class="btn-row">
+      <!-- .btn-dark is your existing sleek button class -->
+      <button type="submit" class="btn-dark">Login</button>
+    </div>
+  </form>
+  
+</div>
+<%- include('partials/footer') %>

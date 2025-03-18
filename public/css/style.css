@@ -1,0 +1,253 @@
+/* Optionally import a Google Font for a more modern look: */
+/* @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap'); */
+
+/* 1) Make the html/body take up full height for sticky footer */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* 2) Body as a flex container for sticky footer */
+body {
+  display: flex;
+  flex-direction: column;
+  background-color: #121212; /* Dark background */
+  color: #b1a9a3;
+  /* If you imported a font above, uncomment this: */
+  /* font-family: 'Roboto', sans-serif; */
+  font-family: Arial, sans-serif;
+}
+
+/* Header & Footer */
+header, footer {
+  background-color: #171717;
+  color: #b1a9a3;
+  padding: 1em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Make sure header text doesn't shift around */
+header h1, footer p {
+  margin: 0;
+}
+
+/* Header & Footer Links */
+header a, footer a {
+  color: #b1a9a3;
+  text-decoration: none;
+  margin-left: 1em;
+}
+
+header a:hover, footer a:hover {
+  text-decoration: underline;
+}
+
+/* 3) Main content should expand to push footer down if content is short */
+main {
+  flex: 1; /* This ensures the footer stays at the bottom if content is short */
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2em 1em;
+}
+
+/* Form Styles */
+form {
+  background-color: #1f1f1f;
+  border-radius: 6px;
+  padding: 1.5em;
+  margin-bottom: 2em;
+}
+
+form label {
+  display: block;
+  margin: 1em 0 0.5em;
+}
+
+form input[type="date"],
+form input[type="number"],
+form select {
+  width: 100%;
+  padding: 0.5em;
+  border: 1px solid #333;
+  background-color: #2c2c2c;
+  color: #fff;
+  border-radius: 4px;
+  margin-bottom: 0.5em;
+}
+
+/* Submit Button (used in forms) */
+form button {
+  background-color: #4e4f50;
+  color: #fff;
+  border: none;
+  padding: 0.6em 1.2em;
+  border-radius: 1.5em; /* for that pill shape */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-decoration: none; /* remove underline if it's an anchor */
+  font-size: 1em;
+  font-weight: bold;
+}
+
+form button:hover {
+  background-color: #656668;
+}
+
+/* Tables (Admin View) */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #1f1f1f;
+  margin-bottom: 2em;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+table thead {
+  background-color: #333;
+}
+
+table th, table td {
+  padding: 0.75em 1em;
+  text-align: left;
+  border-bottom: 1px solid #2c2c2c;
+}
+
+table th {
+  font-weight: 600;
+}
+
+table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Links in main content area */
+a {
+  color: #3e7cff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Success and Error Messages */
+p[style*="color:green"] {
+  background-color: #153f2e;
+  padding: 0.5em;
+  border-radius: 4px;
+}
+
+p[style*="color:red"] {
+  background-color: #4a1c1c;
+  padding: 0.5em;
+  border-radius: 4px;
+}
+
+/* ------------------------------------------------------ */
+/* ADDITIONAL STYLES FOR AVATAR, HEADER-RIGHT, AND BTN-DARK */
+/* ------------------------------------------------------ */
+
+/* Right side of the header (user info, nav, etc.) */
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+/* The circular avatar for user initials */
+.avatar {
+  background-color: #000000;
+  color: #fff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: 1em;
+  font-size: 1rem;
+}
+
+
+
+/* Dark-themed button (for Login/Logout) */
+.btn-dark {
+  background-color: #4e4f50;
+  color: #fff;
+  border: none;
+  padding: 0.6em 1.2em;
+  border-radius: 1.5em; /* for that pill shape */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-decoration: none; /* remove underline if it's an anchor */
+  font-size: 1em;
+  font-weight: bold;
+}
+
+.btn-dark:hover {
+  background-color: #656668;
+}
+
+/* Group each label+input together for consistent spacing */
+.form-group {
+  margin-bottom: 1em; /* space between fields */
+}
+
+/* Right-align the button row */
+.btn-row {
+  text-align: right;
+}
+
+/* Sleeker input fields with a slightly lighter gray background */
+form input[type="text"],
+form input[type="password"],
+form input[type="date"],
+form input[type="number"],
+form select {
+  width: 100%;
+  padding: 0.5em;
+  /* A slightly lighter gray than your current #2c2c2c */
+  background-color: #303030; 
+  border: 1px solid #303030;
+  color: #fff;
+  border-radius: 4px;
+  margin-bottom: 0.5em;
+  margin-right: 0.5em;
+}
+
+/* Hover/focus effect for a more interactive feel */
+form input[type="text"]:focus,
+form input[type="password"]:focus,
+form input[type="date"]:focus,
+form input[type="number"]:focus,
+form select:focus {
+  outline: none;
+  border: 1px solid #2e2d2d;
+}
+
+.admin-actions {
+  margin-bottom: 1em; /* or 2em, whatever spacing you like */
+}
+
+.space { margin-bottom: 30px; }
+
+.topspace { margin-top: 30px; }
+
+.button-row {
+  display: flex;         /* put buttons in a row */
+  flex-wrap: wrap;       /* allows wrapping if needed */
+  gap: 1em;              /* space between items */
+  margin-top: 1em;       /* optional spacing above the row */
+}
+
+
+.screenshots-container {
+  white-space: nowrap; /* keep them on one line */
+}
+.screenshots-container img {
+  vertical-align: middle;
+}

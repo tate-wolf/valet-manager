@@ -1,0 +1,21 @@
+<%- include('partials/header', { title: 'Register' }) %>
+<div>
+  <link rel="stylesheet" href="/css/style.css">
+  <h2>Register</h2>
+  <% if (error) { %>
+    <p style="color:red;"><%= error %></p>
+  <% } %>
+  <form action="/register" method="POST">
+    <label for="name">Name:</label>
+    <input type="text" id="name" name="name" required>
+    <br>
+    <label for="phone">Phone:</label>
+    <input type="text" id="phone" name="phone" required>
+    <br>
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required>
+    <br>
+    <button type="submit", class="btn-drk">Register</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

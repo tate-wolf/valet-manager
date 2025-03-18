@@ -1,0 +1,23 @@
+<%- include('partials/header', { title: 'Manage Locations' }) %>
+<div>
+  <h2>Manage Locations</h2>
+  <% if (error) { %>
+    <p style="color:red;"><%= error %></p>
+  <% } %>
+  <% if (message) { %>
+    <p style="color:green;"><%= message %></p>
+  <% } %>
+  <form action="/admin/locations" method="POST">
+    <label for="locationName">Add New Location:</label>
+    <input type="text" id="locationName" name="locationName" required>
+    <button type="submit">Add Location</button>
+  </form>
+  <h3>Existing Locations</h3>
+  <ul>
+    <% locations.forEach(loc => { %>
+      <li><%= loc.name %></li>
+    <% }) %>
+  </ul>
+  <a href="/admin", class="btn-dark", class="topspace">Back to Admin Portal</a>
+</div>
+<%- include('partials/footer') %>

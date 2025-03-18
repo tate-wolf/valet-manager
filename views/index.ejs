@@ -1,0 +1,14 @@
+<%- include('partials/header', { title: 'Home' }) %>
+<div>
+  <h2>Welcome to the Valet Management App</h2>
+  <% if (!user) { %>
+    <p>Please <a href="/login", class="btn-dark">Login</a> or <a href="/register", class="btn-dark">Register</a>.</p>
+  <% } else { %>
+    <% if(user.role === 'admin') { %>
+      <p>Go to the <a href="/admin", class="btn-dark">Admin Portal</a>.</p>
+    <% } else { %>
+      <p>Go to your <a href="/dashboard", class="btn-dark">Dashboard</a>.</p>
+    <% } %>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

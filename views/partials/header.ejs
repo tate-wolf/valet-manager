@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title || 'Valet App' %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <h1 href="/">Valet App</h1>
+    <div class="header-right">
+      <% if (user) { %>
+        <!-- Inline function to get user initials -->
+        <% function getInitials(fullName) {
+             if(!fullName) return '';
+             return fullName
+               .split(' ')
+               .map(word => word[0])
+               .join('')
+               .toUpperCase();
+           }
+        %>
+        <!-- Avatar circle with initials -->
+        <div class="avatar">
+          <%= getInitials(user.name) %>
+        </div>
+
+        <!-- Bold welcome text -->
+        <strong>Welcome, <%= user.name %></strong>
+
+        <!-- Logout as a dark-themed button -->
+        <a href="/logout" class="btn-dark" style="margin-left:1em;">Logout</a>
+
+      <% } else { %>
+        <nav>
+          <a href="/">Home</a>
+          <a href="/register">Register</a>
+          <!-- Login as a dark-themed button -->
+          <a href="/login" class="btn-dark">Login</a>
+        </nav>
+      <% } %>
+    </div>
+  </header>
+  <main>
