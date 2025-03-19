@@ -4,16 +4,19 @@ FROM node:18-bullseye
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files first
 COPY package*.json ./
 
-# Configure npm to use Python3 (for node-gyp) and install dependencies
-RUN npm config set python /usr/bin/python3 && npm install --build-from-source
+# Set the PYTHON environment variable so node-gyp can find Python3
+ENV PYTHON=/usr/bin/python3
 
-# Copy the rest of the application code
+# Install dependencies, forcing a rebuild of native modules if needed
+RUN npm install --build-from-source
+
+# Copy the rest of your application code
 COPY . .
 
-# Expose the port your app runs on
+# Expose the port your app listens on
 EXPOSE 3000
 
 # Start the app
