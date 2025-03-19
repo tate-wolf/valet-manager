@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = [
-  "g++",
-  "gcc",
-  "make",
-  "pkg-config",
-  "python39"
-]
