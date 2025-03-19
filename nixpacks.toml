@@ -1,2 +1,8 @@
 [phases.setup]
-[ "g++","gcc", "make", "pkg-config", "python39"]
+nixPkgs = [
+  "g++",
+  "gcc",
+  "make",
+  "pkg-config",
+  "python39"
+]
