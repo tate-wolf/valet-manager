@@ -1,10 +1,10 @@
 // server.js
 const express = require('express');
 const session = require('express-session');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // using bcryptjs
 const dotenv = require('dotenv');
 const path = require('path');
-const db = require('./db');
+const db = require('./db'); // PostgreSQL-based db.js
 const csvWriter = require('csv-writer').createObjectCsvWriter;
 
 dotenv.config();
@@ -80,10 +80,10 @@ app.post('/register', async (req, res) => {
     return res.render('register', { error: 'All fields are required' });
   }
   const hashedPassword = await bcrypt.hash(password, 10);
-  const stmt = db.prepare('INSERT INTO users (name, phone, password) VALUES (?, ?, ?)');
-  stmt.run(name, phone, hashedPassword, function(err) {
+  const queryText = 'INSERT INTO users (name, phone, password) VALUES ($1, $2, $3)';
+  db.query(queryText, [name, phone, hashedPassword], (err, result) => {
     if (err) {
-      if (err.message.includes('UNIQUE constraint failed: users.phone')) {
+      if (err.message.includes('duplicate key value violates unique constraint')) {
         return res.render('register', { error: 'Phone number is already registered!' });
       } else {
         return res.render('register', { error: 'Registration error: ' + err.message });
@@ -102,8 +102,10 @@ app.post('/login', (req, res) => {
   if (!phone || !password) {
     return res.render('login', { error: 'All fields are required' });
   }
-  db.get('SELECT * FROM users WHERE phone = ?', [phone], async (err, user) => {
-    if (err || !user) return res.render('login', { error: 'Invalid credentials' });
+  const queryText = 'SELECT * FROM users WHERE phone = $1';
+  db.query(queryText, [phone], async (err, result) => {
+    if (err || result.rowCount === 0) return res.render('login', { error: 'Invalid credentials' });
+    const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.render('login', { error: 'Invalid credentials' });
     req.session.user = user;
@@ -125,11 +127,11 @@ app.get('/logout', (req, res) => {
 // VALET DASHBOARD WITH LOCATION SELECTION & SCREENSHOT UPLOAD
 // ------------------------------
 app.get('/dashboard', requireLogin, (req, res) => {
-  db.all('SELECT * FROM locations', (err, locations) => {
+  db.query('SELECT * FROM locations', [], (err, result) => {
     if (err) {
       return res.render('dashboard', { error: 'Error loading locations: ' + err.message, message: null, locations: [] });
     }
-    res.render('dashboard', { error: null, message: null, locations });
+    res.render('dashboard', { error: null, message: null, locations: result.rows });
   });
 });
 app.post('/dashboard', requireLogin, upload.array('screenshots', 5), (req, res) => {
@@ -137,29 +139,27 @@ app.post('/dashboard', requireLogin, upload.array('screenshots', 5), (req, res) 
   if (!shift_date || !hours || online_tips === undefined || cash_tips === undefined || !location_id || cars === undefined) {
     return res.render('dashboard', { error: 'All fields are required', message: null, locations: [] });
   }
-  const stmt = db.prepare(`
+  const insertQuery = `
     INSERT INTO shift_reports (user_id, shift_date, hours, online_tips, cash_tips, location_id, cars)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run(req.session.user.id, shift_date, hours, online_tips, cash_tips, location_id, cars, function(err) {
+    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+  `;
+  db.query(insertQuery, [req.session.user.id, shift_date, hours, online_tips, cash_tips, location_id, cars], (err, result) => {
     if (err) {
       return res.render('dashboard', { error: 'Error saving report: ' + err.message, message: null, locations: [] });
     }
-    const shiftReportId = this.lastID;
+    const shiftReportId = result.rows[0].id;
     if (req.files && req.files.length > 0) {
-      const insertScreenshot = db.prepare(`
-        INSERT INTO shift_screenshots (shift_report_id, file_path)
-        VALUES (?, ?)
-      `);
       req.files.forEach(file => {
-        insertScreenshot.run(shiftReportId, file.filename);
+        db.query('INSERT INTO shift_screenshots (shift_report_id, file_path) VALUES ($1, $2)', [shiftReportId, file.filename], (err) => {
+          if (err) console.error('Error inserting screenshot:', err);
+        });
       });
     }
-    db.all('SELECT * FROM locations', (err, locations) => {
+    db.query('SELECT * FROM locations', [], (err, result) => {
       if (err) {
         return res.render('dashboard', { error: 'Error loading locations: ' + err.message, message: null, locations: [] });
       }
-      res.render('dashboard', { error: null, message: 'Shift report submitted successfully!', locations });
+      res.render('dashboard', { error: null, message: 'Shift report submitted successfully!', locations: result.rows });
     });
   });
 });
@@ -175,9 +175,9 @@ app.get('/admin', requireAdmin, (req, res) => {
     LEFT JOIN locations l ON sr.location_id = l.id
     ORDER BY sr.shift_date DESC
   `;
-  db.all(query, (err, reports) => {
+  db.query(query, [], (err, result) => {
     if (err) return res.send('Error retrieving reports: ' + err.message);
-    res.render('admin', { reports });
+    res.render('admin', { reports: result.rows });
   });
 });
 
@@ -191,12 +191,12 @@ app.get('/admin/edit/:id', requireAdmin, (req, res) => {
     FROM shift_reports sr
     JOIN users u ON sr.user_id = u.id
     LEFT JOIN locations l ON sr.location_id = l.id
-    WHERE sr.id = ?
+    WHERE sr.id = $1
   `;
-  db.get(query, [id], (err, report) => {
+  db.query(query, [id], (err, result) => {
     if (err) return res.send('Error retrieving shift report: ' + err.message);
-    if (!report) return res.send('Shift report not found.');
-    res.render('admin_edit', { report });
+    if (result.rowCount === 0) return res.send('Shift report not found.');
+    res.render('admin_edit', { report: result.rows[0] });
   });
 });
 app.post('/admin/edit/:id', requireAdmin, (req, res) => {
@@ -204,14 +204,14 @@ app.post('/admin/edit/:id', requireAdmin, (req, res) => {
   const { shift_date, hours, cars, online_tips, cash_tips } = req.body;
   const updateQuery = `
     UPDATE shift_reports
-    SET shift_date = ?,
-        hours = ?,
-        cars = ?,
-        online_tips = ?,
-        cash_tips = ?
-    WHERE id = ?
+    SET shift_date = $1,
+        hours = $2,
+        cars = $3,
+        online_tips = $4,
+        cash_tips = $5
+    WHERE id = $6
   `;
-  db.run(updateQuery, [shift_date, hours, cars, online_tips, cash_tips, id], function(err) {
+  db.query(updateQuery, [shift_date, hours, cars, online_tips, cash_tips, id], (err) => {
     if (err) return res.send('Error updating shift report: ' + err.message);
     res.redirect('/admin');
   });
@@ -228,9 +228,9 @@ app.get('/admin/export', requireAdmin, (req, res) => {
     LEFT JOIN locations l ON sr.location_id = l.id
     ORDER BY sr.shift_date DESC
   `;
-  db.all(query, async (err, reports) => {
+  db.query(query, [], async (err, result) => {
     if (err) return res.send('Error retrieving reports: ' + err.message);
-    reports = reports.map(report => ({
+    let reports = result.rows.map(report => ({
       ...report,
       total: Number(report.online_tips) + Number(report.cash_tips)
     }));
@@ -259,9 +259,9 @@ app.get('/admin/export', requireAdmin, (req, res) => {
 // ADMIN LOCATION MANAGEMENT
 // ------------------------------
 app.get('/admin/locations', requireAdmin, (req, res) => {
-  db.all('SELECT * FROM locations', (err, locations) => {
+  db.query('SELECT * FROM locations', [], (err, result) => {
     if (err) return res.send('Error retrieving locations: ' + err.message);
-    res.render('admin_locations', { locations, error: null, message: null });
+    res.render('admin_locations', { locations: result.rows, error: null, message: null });
   });
 });
 app.post('/admin/locations', requireAdmin, (req, res) => {
@@ -269,24 +269,25 @@ app.post('/admin/locations', requireAdmin, (req, res) => {
   if (!locationName) {
     return res.render('admin_locations', { locations: [], error: 'Location name is required', message: null });
   }
-  const stmt = db.prepare('INSERT INTO locations (name) VALUES (?)');
-  stmt.run(locationName, function(err) {
+  db.query('INSERT INTO locations (name) VALUES ($1)', [locationName], (err) => {
     if (err) {
       return res.render('admin_locations', { locations: [], error: 'Error adding location: ' + err.message, message: null });
     }
-    db.all('SELECT * FROM locations', (err, locations) => {
+    db.query('SELECT * FROM locations', [], (err, result) => {
       if (err) {
         return res.render('admin_locations', { locations: [], error: 'Error retrieving locations: ' + err.message, message: null });
       }
-      res.render('admin_locations', { locations, error: null, message: 'Location added successfully!' });
+      res.render('admin_locations', { locations: result.rows, error: null, message: 'Location added successfully!' });
     });
   });
 });
 
-// Delete a specific shift report by ID
+// ------------------------------
+// DELETE SHIFT REPORT
+// ------------------------------
 app.post('/admin/delete/:id', requireAdmin, (req, res) => {
   const { id } = req.params;
-  db.run('DELETE FROM shift_reports WHERE id = ?', [id], function(err) {
+  db.query('DELETE FROM shift_reports WHERE id = $1', [id], (err) => {
     if (err) return res.send('Error deleting entry: ' + err.message);
     res.redirect('/admin');
   });
@@ -307,12 +308,12 @@ app.get('/admin/leaderboard', requireAdmin, (req, res) => {
   if (locationFilter) {
     query = `
       SELECT u.id, u.name, u.phone,
-        IFNULL(SUM(sr.hours), 0) AS total_hours,
-        IFNULL(SUM(sr.online_tips), 0) AS total_online,
-        IFNULL(SUM(sr.cash_tips), 0) AS total_cash,
-        IFNULL(SUM(sr.online_tips) + SUM(sr.cash_tips), 0) AS total_tips
+        COALESCE(SUM(sr.hours), 0) AS total_hours,
+        COALESCE(SUM(sr.online_tips), 0) AS total_online,
+        COALESCE(SUM(sr.cash_tips), 0) AS total_cash,
+        COALESCE(SUM(sr.online_tips) + SUM(sr.cash_tips), 0) AS total_tips
       FROM users u
-      LEFT JOIN shift_reports sr ON sr.user_id = u.id AND sr.location_id = ?
+      LEFT JOIN shift_reports sr ON sr.user_id = u.id AND sr.location_id = $1
       WHERE u.role = 'valet'
       GROUP BY u.id
       ORDER BY ${sort} ${order}
@@ -321,10 +322,10 @@ app.get('/admin/leaderboard', requireAdmin, (req, res) => {
   } else {
     query = `
       SELECT u.id, u.name, u.phone,
-        IFNULL(SUM(sr.hours), 0) AS total_hours,
-        IFNULL(SUM(sr.online_tips), 0) AS total_online,
-        IFNULL(SUM(sr.cash_tips), 0) AS total_cash,
-        IFNULL(SUM(sr.online_tips) + SUM(sr.cash_tips), 0) AS total_tips
+        COALESCE(SUM(sr.hours), 0) AS total_hours,
+        COALESCE(SUM(sr.online_tips), 0) AS total_online,
+        COALESCE(SUM(sr.cash_tips), 0) AS total_cash,
+        COALESCE(SUM(sr.online_tips) + SUM(sr.cash_tips), 0) AS total_tips
       FROM users u
       LEFT JOIN shift_reports sr ON sr.user_id = u.id
       WHERE u.role = 'valet'
@@ -332,11 +333,12 @@ app.get('/admin/leaderboard', requireAdmin, (req, res) => {
       ORDER BY ${sort} ${order}
     `;
   }
-  db.all('SELECT * FROM locations', (err, locations) => {
+  db.query('SELECT * FROM locations', [], (err, result) => {
     if (err) return res.send('Error retrieving locations: ' + err.message);
-    db.all(query, params, (err, leaderboard) => {
+    const locations = result.rows;
+    db.query(query, params, (err, result) => {
       if (err) return res.send('Error retrieving leaderboard: ' + err.message);
-      res.render('admin_leaderboard', { leaderboard, sort, order, locations, selectedLocation: locationFilter });
+      res.render('admin_leaderboard', { leaderboard: result.rows, sort, order, locations, selectedLocation: locationFilter });
     });
   });
 });
@@ -349,19 +351,20 @@ app.get('/admin/charts', requireAdmin, (req, res) => {
   const attribute = req.query.attribute || 'hours';
   const allowedAttributes = ['hours', 'online_tips', 'cash_tips', 'total_tips'];
   if (!allowedAttributes.includes(attribute)) return res.send('Invalid attribute selected.');
-  db.all('SELECT * FROM locations', (err, locations) => {
+  db.query('SELECT * FROM locations', [], (err, result) => {
     if (err) return res.send('Error retrieving locations: ' + err.message);
+    const locations = result.rows;
     let query = '';
     let params = [];
     let columnSelect = (attribute === 'total_tips') 
-      ? 'IFNULL(SUM(sr.online_tips) + SUM(sr.cash_tips), 0)' 
-      : `IFNULL(SUM(sr.${attribute}), 0)`;
+      ? 'COALESCE(SUM(sr.online_tips) + SUM(sr.cash_tips), 0)' 
+      : `COALESCE(SUM(sr.${attribute}), 0)`;
     if (locationFilter) {
       query = `
         SELECT sr.shift_date as date,
                ${columnSelect} as value
         FROM shift_reports sr
-        WHERE sr.location_id = ?
+        WHERE sr.location_id = $1
         GROUP BY sr.shift_date
         ORDER BY sr.shift_date ASC
       `;
@@ -375,10 +378,10 @@ app.get('/admin/charts', requireAdmin, (req, res) => {
         ORDER BY sr.shift_date ASC
       `;
     }
-    db.all(query, params, (err, rows) => {
+    db.query(query, params, (err, result) => {
       if (err) return res.send('Error retrieving chart data: ' + err.message);
-      const labels = rows.map(r => r.date);
-      const dataValues = rows.map(r => r.value);
+      const labels = result.rows.map(r => r.date);
+      const dataValues = result.rows.map(r => r.value);
       res.render('admin_charts', {
         locations,
         labels,
@@ -399,25 +402,27 @@ app.get('/admin/charts-compare', requireAdmin, (req, res) => {
   const valetFilter = req.query.valet_id || 'all';
   const allowedAttributes = ['hours', 'online_tips', 'cash_tips', 'total_tips'];
   if (!allowedAttributes.includes(attribute)) return res.send('Invalid attribute selected.');
-  db.all('SELECT * FROM locations', (err, locations) => {
+  db.query('SELECT * FROM locations', [], (err, result) => {
     if (err) return res.send('Error retrieving locations: ' + err.message);
-    db.all(`SELECT id, name FROM users WHERE role='valet'`, (err, valets) => {
+    const locations = result.rows;
+    db.query(`SELECT id, name FROM users WHERE role='valet'`, [], (err, result) => {
       if (err) return res.send('Error retrieving valets: ' + err.message);
+      const valets = result.rows;
       let sumExpression = (attribute === 'total_tips') 
-        ? 'IFNULL(SUM(sr.online_tips) + SUM(sr.cash_tips), 0) AS value' 
-        : `IFNULL(SUM(sr.${attribute}), 0) AS value`;
+        ? 'COALESCE(SUM(sr.online_tips) + SUM(sr.cash_tips), 0) AS value' 
+        : `COALESCE(SUM(sr.${attribute}), 0) AS value`;
       const whereClauses = [];
-      const params = [];
+      const queryParams = [];
       if (locationFilter) {
-        whereClauses.push('sr.location_id = ?');
-        params.push(locationFilter);
+        whereClauses.push('sr.location_id = $1');
+        queryParams.push(locationFilter);
       }
       let groupBy = 'sr.shift_date';
       let selectUser = '';
       let joinUser = 'JOIN users u ON sr.user_id = u.id';
       if (valetFilter !== 'all') {
-        whereClauses.push('sr.user_id = ?');
-        params.push(valetFilter);
+        whereClauses.push('sr.user_id = $' + (queryParams.length + 1));
+        queryParams.push(valetFilter);
       } else {
         groupBy = 'sr.shift_date, sr.user_id';
         selectUser = ', u.id AS user_id, u.name AS user_name';
@@ -433,19 +438,18 @@ app.get('/admin/charts-compare', requireAdmin, (req, res) => {
         GROUP BY ${groupBy}
         ORDER BY sr.shift_date ASC
       `;
-      db.all(query, params, (err, rows) => {
+      db.query(query, queryParams, (err, result) => {
         if (err) return res.send('Error retrieving chart data: ' + err.message);
-        const uniqueDatesSet = new Set(rows.map(r => r.date));
-        const uniqueDates = Array.from(uniqueDatesSet).sort();
+        const uniqueDates = Array.from(new Set(result.rows.map(r => r.date))).sort();
         if (valetFilter !== 'all') {
           const dataMap = new Map();
-          rows.forEach(r => dataMap.set(r.date, r.value));
+          result.rows.forEach(r => dataMap.set(r.date, r.value));
           const dataValues = uniqueDates.map(d => dataMap.get(d) || 0);
           const datasets = [{ label: 'Valet Performance', data: dataValues }];
           return res.render('admin_charts_compare', { locations, valets, selectedLocation: locationFilter, selectedValet: valetFilter, selectedAttribute: attribute, labels: uniqueDates, datasets });
         } else {
           const userMap = new Map();
-          rows.forEach(r => {
+          result.rows.forEach(r => {
             const uid = r.user_id;
             if (!userMap.has(uid)) {
               userMap.set(uid, { userName: r.user_name, dataMap: new Map() });
@@ -469,8 +473,9 @@ app.get('/admin/charts-compare', requireAdmin, (req, res) => {
 // ------------------------------
 app.get('/admin/screenshots', requireAdmin, (req, res) => {
   const locationFilter = req.query.location_id || '';
-  db.all('SELECT * FROM locations', (err, locations) => {
+  db.query('SELECT * FROM locations', [], (err, result) => {
     if (err) return res.send('Error retrieving locations: ' + err.message);
+    const locations = result.rows;
     let query = `
       SELECT sr.id AS shift_report_id,
              sr.shift_date,
@@ -482,16 +487,16 @@ app.get('/admin/screenshots', requireAdmin, (req, res) => {
       LEFT JOIN locations l ON sr.location_id = l.id
       LEFT JOIN shift_screenshots sc ON sc.shift_report_id = sr.id
     `;
-    const params = [];
+    const queryParams = [];
     if (locationFilter) {
-      query += ' WHERE sr.location_id = ?';
-      params.push(locationFilter);
+      query += ' WHERE sr.location_id = $1';
+      queryParams.push(locationFilter);
     }
     query += ' ORDER BY sr.shift_date DESC';
-    db.all(query, params, (err, rows) => {
+    db.query(query, queryParams, (err, result) => {
       if (err) return res.send('Error retrieving screenshots: ' + err.message);
       const reportMap = new Map();
-      rows.forEach(r => {
+      result.rows.forEach(r => {
         if (!reportMap.has(r.shift_report_id)) {
           reportMap.set(r.shift_report_id, {
             shift_report_id: r.shift_report_id,
@@ -522,8 +527,9 @@ app.get('/admin/export-weekly', requireAdmin, (req, res) => {
     LEFT JOIN locations l ON sr.location_id = l.id
     ORDER BY l.id, sr.shift_date ASC
   `;
-  db.all(query, (err, reports) => {
+  db.query(query, [], (err, result) => {
     if (err) return res.send('Error retrieving reports: ' + err.message);
+    const reports = result.rows;
     // Group by location first
     const locationMap = new Map();
     reports.forEach(r => {
@@ -576,9 +582,8 @@ app.get('/admin/spreadsheets', requireAdmin, (req, res) => {
 
 // ------------------------------
 // TREVOR PORTAL - Manager Notebook Style
-// ------------------------------
 // Group shift reports by day (globally) then within each day by location.
-// Sort days in descending order so the most recent date is at the top.
+// Sorted in descending order (most recent first) and displays date as "Month Day, Year - Weekday"
 app.get('/admin/trevor', requireAdmin, (req, res) => {
   const query = `
     SELECT sr.*, u.name AS valet_name, u.phone, l.name AS location_name
@@ -587,9 +592,10 @@ app.get('/admin/trevor', requireAdmin, (req, res) => {
     LEFT JOIN locations l ON sr.location_id = l.id
     ORDER BY sr.shift_date DESC
   `;
-  db.all(query, (err, reports) => {
+  db.query(query, [], (err, result) => {
     if (err) return res.send('Error retrieving shift reports: ' + err.message);
-    // Group reports by day globally
+    const reports = result.rows;
+    // Group reports by day (using the date part of shift_date)
     const dayMap = new Map();
     reports.forEach(r => {
       let dayStr = r.shift_date;
